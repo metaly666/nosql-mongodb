@@ -6,7 +6,6 @@ import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.DeleteResult;
@@ -24,7 +23,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 import java.text.MessageFormat;
-import java.util.Collections;
 import java.util.Map;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -60,17 +58,12 @@ public class UserDao extends AbstractMFlixDao {
      * @return Success or failure
      */
     public boolean addUser(User user) {
-        //comment from reviewer: please check if user exist
-        try {
+        if (usersCollection.countDocuments(Filters.eq("email", user.getEmail())) == 0) {
+            log.info("Creating user with email '{}'", user.getEmail());
             usersCollection.withWriteConcern(WriteConcern.MAJORITY).insertOne(user);
-            return true;
-
-        } catch (MongoWriteException e) {
-            log.error(
-                    "Could not insert `{}` into `users` collection: {}", user.getEmail(), e.getMessage());
-            throw new IncorrectDaoOperation(
-                    MessageFormat.format("User with email `{0}` already exists", user.getEmail()));
-        }
+        } else
+            log.info("User with email '{}' already exists", user.getEmail());
+        return true;
     }
 
     /**
@@ -80,14 +73,14 @@ public class UserDao extends AbstractMFlixDao {
      * @param jwt    - jwt string token
      * @return true if successful
      */
-    public boolean createUserSession(String userId, String jwt){
-        try{
+    public boolean createUserSession(String userId, String jwt) {
+        try {
             Bson updateFilter = new Document("user_id", userId);
             Bson setUpdate = Updates.set("jwt", jwt);
             UpdateOptions options = new UpdateOptions().upsert(true);
             sessionsCollection.updateOne(updateFilter, setUpdate, options);
             return true;
-        } catch (MongoWriteException e){
+        } catch (MongoWriteException e) {
             String errorMessage =
                     MessageFormat.format(
                             "Unable to $set jwt token in sessions collection: {}", e.getMessage());
@@ -139,7 +132,7 @@ public class UserDao extends AbstractMFlixDao {
                 DeleteResult res = usersCollection.deleteOne(userDeleteFilter);
 
                 if (res.getDeletedCount() < 0) {
-                    log.warn("User with `email` {} not found. Potential concurrent operation?!");
+                    log.warn("User with `email` {} not found. Potential concurrent operation?!", email);
                 }
 
                 return res.wasAcknowledged();

@@ -34,6 +34,7 @@ public class HandlingErrorsTest extends TicketTest {
     this.mDao = new MovieDao(mongoClient, databaseName);
     this.uDao = new UserDao(mongoClient, databaseName);
     this.testUser = new User();
+    this.testUser.setEmail("box@owl.com");
     this.testUser.setName("Hermione Granger");
     this.testUser.setHashedpw("somehashedpw");
   }
@@ -52,7 +53,7 @@ public class HandlingErrorsTest extends TicketTest {
     Assert.assertNull(movie);
   }
 
-  @Test(expected = IncorrectDaoOperation.class)
+  @Test
   public void testNoUserDups() {
     // creates the user for the first time
     uDao.addUser(testUser);
