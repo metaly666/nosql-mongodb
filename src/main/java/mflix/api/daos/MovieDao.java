@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
- //comment from reviewer: add logs in all daos you have changed. Imagine you have to fix defect on prod using these logs
+ //comment from reviewer: add logs
 @Component
 public class MovieDao extends AbstractMFlixDao {
 
