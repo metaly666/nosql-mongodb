@@ -6,17 +6,20 @@ import com.mongodb.client.model.*;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
- //comment from reviewer: add logs
+//comment from reviewer: add logs
 @Component
 public class MovieDao extends AbstractMFlixDao {
 
     public static String MOVIES_COLLECTION = "movies";
+    private final Logger log;
 
     private MongoCollection<Document> moviesCollection;
 
@@ -25,9 +28,9 @@ public class MovieDao extends AbstractMFlixDao {
             MongoClient mongoClient, @Value("${spring.mongodb.database}") String databaseName) {
         super(mongoClient, databaseName);
         moviesCollection = db.getCollection(MOVIES_COLLECTION);
+        log = LoggerFactory.getLogger(this.getClass());
     }
 
-    @SuppressWarnings("unchecked")
     private Bson buildLookupStage() {
         List<Variable<String>> let = new ArrayList<>();
         let.add(new Variable<>("id", "$_id"));
@@ -52,11 +55,12 @@ public class MovieDao extends AbstractMFlixDao {
      * @param movieId - Movie object identifier
      * @return true if valid movieId.
      */
-    private boolean validIdValue(String movieId){
-        try{
+    private boolean validIdValue(String movieId) {
+        try {
             new ObjectId(movieId);
-        } catch (IllegalArgumentException e){
+        } catch (IllegalArgumentException e) {
             // value cannot be transformed into mongodb ObjectID
+            log.error("Movie ID `" + movieId + "` is not a hexadecimal string", e);
             return false;
         }
         return true;
@@ -127,6 +131,7 @@ public class MovieDao extends AbstractMFlixDao {
                 .iterator()
                 .forEachRemaining(movies::add);
 
+        log.info("Found {} movies sorted with `{}`", movies.size(), sort);
         return movies;
     }
 
@@ -147,7 +152,7 @@ public class MovieDao extends AbstractMFlixDao {
                 .projection(projection)
                 .iterator()
                 .forEachRemaining(movies::add);
-
+        log.info("Found {} movies for `{}` countries", movies.size(), Arrays.toString(country));
         return movies;
     }
 
@@ -173,6 +178,7 @@ public class MovieDao extends AbstractMFlixDao {
                 .limit(limit)
                 .iterator()
                 .forEachRemaining(movies::add);
+        log.info("Found {} movies for `{}` keywords", movies.size(), keywords);
         return movies;
     }
 
@@ -199,6 +205,7 @@ public class MovieDao extends AbstractMFlixDao {
                 .skip(skip)
                 .iterator()
                 .forEachRemaining(movies::add);
+        log.info("Found {} movies for `{}` cast", movies.size(), Arrays.toString(cast));
         return movies;
     }
 
@@ -221,6 +228,7 @@ public class MovieDao extends AbstractMFlixDao {
         // pagination like skip and limit in the code below
         moviesCollection.find(castFilter).sort(sort).limit(limit).skip(skip).iterator()
                 .forEachRemaining(movies::add);
+        log.info("Found {} movies for `{}` genres", movies.size(), Arrays.toString(genres));
         return movies;
     }
 
@@ -307,6 +315,7 @@ public class MovieDao extends AbstractMFlixDao {
         pipeline.add(facetStage);
 
         moviesCollection.aggregate(pipeline).iterator().forEachRemaining(movies::add);
+        log.info("Found {} movies for `{}` cast using facet search", movies.size(), Arrays.toString(cast));
         return movies;
     }
 
@@ -331,7 +340,9 @@ public class MovieDao extends AbstractMFlixDao {
      * @return number of documents in the movies collection.
      */
     public long getMoviesCount() {
-        return this.moviesCollection.countDocuments();
+        long count = this.moviesCollection.countDocuments();
+        log.info("Found {} movies", count);
+        return count;
     }
 
     /**
@@ -341,7 +352,9 @@ public class MovieDao extends AbstractMFlixDao {
      * @return number of matching documents.
      */
     public long getTextSearchCount(String keywords) {
-        return this.moviesCollection.countDocuments(Filters.text(keywords));
+        long countDocuments = this.moviesCollection.countDocuments(Filters.text(keywords));
+        log.info("Found {} movies by `{}` keywords", countDocuments, keywords);
+        return countDocuments;
     }
 
     /**
@@ -351,7 +364,9 @@ public class MovieDao extends AbstractMFlixDao {
      * @return number of matching documents.
      */
     public long getCastSearchCount(String... cast) {
-        return this.moviesCollection.countDocuments(Filters.in("cast", cast));
+        long countDocuments = this.moviesCollection.countDocuments(Filters.in("cast", cast));
+        log.info("Found {} movies for `{}` cast", countDocuments, Arrays.toString(cast));
+        return countDocuments;
     }
 
     /**
@@ -361,6 +376,8 @@ public class MovieDao extends AbstractMFlixDao {
      * @return number of matching documents.
      */
     public long getGenresSearchCount(String... genres) {
-        return this.moviesCollection.countDocuments(Filters.in("genres", genres));
+        long countDocuments = this.moviesCollection.countDocuments(Filters.in("genres", genres));
+        log.info("Found {} movies for `{}` genres", countDocuments, Arrays.toString(genres));
+        return countDocuments;
     }
 }
