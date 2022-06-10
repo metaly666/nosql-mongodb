@@ -60,6 +60,7 @@ public class UserDao extends AbstractMFlixDao {
      * @return Success or failure
      */
     public boolean addUser(User user) {
+        //comment from reviewer: please check if user exist
         try {
             usersCollection.withWriteConcern(WriteConcern.MAJORITY).insertOne(user);
             return true;
